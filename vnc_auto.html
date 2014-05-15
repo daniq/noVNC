@@ -80,7 +80,18 @@
                            "jsunzip.js", "rfb.js"]);
 
         var rfb;
+        var resizeTimeout;
 
+
+        function UIresize() {
+            // Control-bar height: 36px +
+            // border height: 5px = 41px to be deducted from the height
+            rfb.setDesktopSize(window.innerWidth, window.innerHeight - 41);
+        }
+        function FBUComplete(rfb, fbu) {
+            UIresize();
+            rfb.set_onFBUComplete(function() { });
+        }
         function passwordRequired(rfb) {
             var msg;
             msg = '<form onsubmit="return setPassword();"';
@@ -148,6 +159,16 @@
             }
         }
 
+        window.onresize = function () {
+            // When the window has been resized, wait until the size remains
+            // the same for 0.5 seconds before sending the request for changing
+            // the resolution of the session
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function(){
+                UIresize();
+            }, 500);
+        };
+
         window.onscriptsload = function () {
             var host, port, password, path, token;
 
@@ -200,7 +221,8 @@
                            'view_only':    WebUtil.getQueryVar('view_only', false),
                            'updateState':  updateState,
                            'onXvpInit':    xvpInit,
-                           'onPasswordRequired':  passwordRequired});
+                           'onPasswordRequired':  passwordRequired,
+                           'onFBUComplete': FBUComplete});
             rfb.connect(host, port, password, path);
         };
         </script>
