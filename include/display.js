@@ -396,13 +396,15 @@ that.absY = function(y) {
 
 
 that.resize = function(width, height) {
-    c_prevStyle    = "";
+    console.log("resize");
+    c_prevStyle = "";
 
     fb_width = width;
     fb_height = height;
 
     rescale(conf.scale);
-    that.viewportChange();
+    that.viewportChange(0, 0, width, height);
+    //that.viewportChange();
 };
 
 that.clear = function() {

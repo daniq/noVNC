@@ -11,9 +11,21 @@
 /*jslint white: false, browser: true */
 /*global window, $D, Util, WebUtil, RFB, Display */
 
+var resizeTimeout;
+
 // Load supporting scripts
 window.onscriptsload = function () { UI.load(); };
 window.onload = function () { UI.keyboardinputReset(); };
+window.onresize = function () { 
+    // When the window has been resized, wait until the size remains
+    // the same for 0.5 seconds before sending the request for changing
+    // the resolution of the session
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function(){
+        UI.onresize();
+    }, 500);
+};
+
 Util.load_scripts(["webutil.js", "base64.js", "websock.js", "des.js",
                    "keysymdef.js", "keyboard.js", "input.js", "display.js",
                    "jsunzip.js", "rfb.js", "keysym.js"]);
@@ -38,6 +50,12 @@ isTouchDevice: false,
 // UI.init to setup the UI/menus
 load: function (callback) {
     WebUtil.initSettings(UI.start, callback);
+},
+
+onresize: function (callback) {
+    // Control-bar height: 36px +
+    // border height: 5px = 41px to be deducted from the height
+    //UI.rfb.setDesktopSize(window.innerWidth, window.innerHeight - 41);
 },
 
 // Render default UI and initialize settings menu
@@ -96,6 +114,7 @@ start: function(callback) {
                   'onUpdateState': UI.updateState,
                   'onXvpInit': UI.updateXvpVisualState,
                   'onClipboard': UI.clipReceive,
+                  'onFBUComplete': UI.FBUComplete,
                   'onDesktopName': UI.updateDocumentTitle});
 
     autoconnect = WebUtil.getQueryVar('autoconnect', false);
@@ -297,6 +316,10 @@ forceSetting: function(name, val) {
 
 // Show the popup status panel
 togglePopupStatusPanel: function() {
+
+
+    console.log("clip: " + UI.getSetting('clip'));
+    console.log("cur_clip: " + UI.rfb.get_display().get_viewport());
     var psp = $D('noVNC_popup_status_panel');
     if (UI.popupStatusOpen === true) {
         psp.style.display = "none";
@@ -664,6 +687,17 @@ updateXvpVisualState: function(ver) {
     }
 },
 
+// This resize can not be done until we know from the first Frame Buffer Update
+// if it is supported or not.
+// The resize is needed to make sure the server desktop size is updated to the
+// corresponding size of the current local window when reconnecting to an
+// existing session.
+FBUComplete: function(rfb, fbu) {
+    onresize();
+    UI.rfb.set_onFBUComplete(function() { });
+},
+
+
 
 // Display the desktop name in the document title
 updateDocumentTitle: function(rfb, name) {
@@ -754,6 +788,9 @@ setViewClip: function(clip) {
         // Use current setting
         clip = UI.getSetting('clip');
     }
+
+    console.log("clip: " + clip);
+    console.log("cur_clip: " + cur_clip);
 
     if (clip && !cur_clip) {
         // Turn clipping on
